@@ -69,7 +69,7 @@ public class BatchService implements CommandLineRunner {
 				.<Person, Person> chunk(10)
 				.reader(reader())
 				.processor(processor())
-				.writer((ItemWriter<? super Person>) writter)
+				.writer(writter.writer())
 				.build();
 	}
 
