@@ -36,90 +36,63 @@ public class BatchService implements CommandLineRunner {
 	private JobBuilderFactory jobs;
 	@Autowired
 	private StepBuilderFactory steps;
-	
-	 @Autowired
-	    JobLauncher jobLauncher;
 
+	@Autowired
+	private JobLauncher jobLauncher;
+
+	@Autowired
+	private ProcessWritter writter;
+	
 	@Override
 	public void run(String... arg0) throws Exception {
 		runjob();
-		
 	}
-	
-	
+
+
 	public void runjob () throws JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException{
-		
+
 		Job job1 = jobs.get("importUserJob")
-        .incrementer(new RunIdIncrementer())
-//        .listener(listener)
-        .flow(step1())
-        .end()
-        .build();
-		
-		
+				.incrementer(new RunIdIncrementer())
+				.flow(step1())
+				.end()
+				.build();
+
+
 		jobLauncher.run(job1, new JobParameters());
-		
+
 	}
-	
-	
-	
-    public Step step1() {
-        return steps.get("step1")
-                .<Person, Person> chunk(10)
-                .reader(reader())
-                .processor(processor())
-                .writer(writer())
-                .build();
-    }
-    
-    
-    public ItemReader<Person> reader() {
-        FlatFileItemReader<Person> reader = new FlatFileItemReader<Person>();
-        reader.setResource(new ClassPathResource("sample-data.csv"));
-        reader.setLineMapper(new DefaultLineMapper<Person>() {{
-            setLineTokenizer(new DelimitedLineTokenizer() {{
-                setNames(new String[] { "firstName", "lastName" });
-            }});
-            setFieldSetMapper(new BeanWrapperFieldSetMapper<Person>() {{
-                setTargetType(Person.class);
-            }});
-        }});
-        return reader;
-    }
-
-    
-    public ItemProcessor<Person, Person> processor() {
-        return new PersonItemProcessor();
-    }
-
-    
-    public ItemWriter<Person> writer() {
-    	FlatFileItemWriter<Person> writer = new FlatFileItemWriter<Person>();
-    	
-    	writer.setResource(new FileSystemResource("demo.csv"));
-    	writer.setShouldDeleteIfExists(true);
-    	writer.setLineSeparator("\n");
-    	writer.setLineAggregator(new PassThroughLineAggregator<Person>());
-    	
-        return writer;
-    }
-}
 
 
 
-class PersonItemProcessor implements ItemProcessor<Person, Person> {
+	public Step step1() {
+		return steps.get("step1")
+				.<Person, Person> chunk(10)
+				.reader(reader())
+				.processor(processor())
+				.writer((ItemWriter<? super Person>) writter)
+				.build();
+	}
 
-    private static final Logger log = LoggerFactory.getLogger(PersonItemProcessor.class);
 
-    @Override
-    public Person process(final Person person) throws Exception {
-        final String firstName = person.getFirstName().toUpperCase();
-        final String lastName = person.getLastName().toUpperCase();
+	public ItemReader<Person> reader() {
+		FlatFileItemReader<Person> reader = new FlatFileItemReader<Person>();
+		reader.setResource(new ClassPathResource("sample-data.csv"));
+		reader.setLineMapper(new DefaultLineMapper<Person>() {{
+			setLineTokenizer(new DelimitedLineTokenizer() {{
+				setNames(new String[] { "firstName", "lastName" });
+			}});
+			setFieldSetMapper(new BeanWrapperFieldSetMapper<Person>() {{
+				setTargetType(Person.class);
+			}});
+		}});
+		return reader;
+	}
 
-        final Person transformedPerson = new Person(firstName, lastName);
 
-        log.info("Converting (" + person + ") into (" + transformedPerson + ")");
+	public ItemProcessor<Person, Person> processor() {
+		return new PersonItemProcessor();
+	}
 
-        return transformedPerson;
-    }
+
+
 }
